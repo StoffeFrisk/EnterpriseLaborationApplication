@@ -1,6 +1,8 @@
 package com.frisk.enterpriselaboration.Services;
 
+import com.frisk.enterpriselaboration.Enteties.Address;
 import com.frisk.enterpriselaboration.Enteties.Member;
+import com.frisk.enterpriselaboration.Repositorys.AddressRepository;
 import com.frisk.enterpriselaboration.Repositorys.MemberRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -14,10 +16,12 @@ import java.util.Optional;
 public class MemberServiceImpl implements MemberService {
 
     private final MemberRepository memberRepository;
+    private AddressRepository addressRepository;
 
     @Autowired
-    public MemberServiceImpl(MemberRepository memberRepository) {
+    public MemberServiceImpl(MemberRepository memberRepository, AddressRepository addressRepository) {
         this.memberRepository = memberRepository;
+        this.addressRepository = addressRepository;
     }
 
 
@@ -40,10 +44,19 @@ public class MemberServiceImpl implements MemberService {
     @Override
     public ResponseEntity<?> addMember(Member member) {
         try {
-            Member savedMember = memberRepository.save(member);
-            return new ResponseEntity<>(savedMember, HttpStatus.CREATED);
+            Long addressId = member.getAddress().getAddressId();
+            Optional<Address> existingAddress = addressRepository.findById(addressId);
+
+            if (existingAddress.isPresent()) {
+                member.setAddress(existingAddress.get());
+                Member savedMember = memberRepository.save(member);
+                return new ResponseEntity<>(savedMember, HttpStatus.CREATED);
+            } else {
+                return new ResponseEntity<>("Adressen kunde inte hittas.", HttpStatus.BAD_REQUEST);
+            }
         } catch (Exception e) {
-            return new ResponseEntity<>("Fel: Kunde inte lägga till medlem.", HttpStatus.INTERNAL_SERVER_ERROR);
+            e.printStackTrace();
+            return new ResponseEntity<>("Kunde inte lägga till medlem. " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 
