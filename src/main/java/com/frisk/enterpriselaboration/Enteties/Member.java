@@ -11,14 +11,21 @@ public class Member {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private long id;
 
+    @Column(length = 40, nullable = false)
     private String firstName;
+
+    @Column(length = 40, nullable = false)
     private String lastName;
+
+    @Column(length = 100, nullable = false)
     private String email;
-    @Column(nullable = true)
+
+    @Column(length = 20, nullable = true)
     private String phone;
+
     private long dateOfBirth;
 
-    @ManyToOne(cascade = CascadeType.ALL)
+    @ManyToOne
     @JoinColumn(name = "address_id" , referencedColumnName = "addressId")
     private Address address;
 

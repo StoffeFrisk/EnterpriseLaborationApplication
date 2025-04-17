@@ -4,6 +4,7 @@ import com.frisk.enterpriselaboration.Enteties.Address;
 import com.frisk.enterpriselaboration.Enteties.Member;
 import com.frisk.enterpriselaboration.Repositorys.AddressRepository;
 import com.frisk.enterpriselaboration.Repositorys.MemberRepository;
+import com.frisk.enterpriselaboration.exceptions.ResourceNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -11,6 +12,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 public class MemberServiceImpl implements MemberService {
@@ -33,12 +35,9 @@ public class MemberServiceImpl implements MemberService {
 
     @Override
     public ResponseEntity<?> getMemberById(Long id) {
-        Optional<Member> member = memberRepository.findById(id);
-        if (member.isPresent()) {
-            return new ResponseEntity<>(member.get(), HttpStatus.OK);
-        } else {
-            return new ResponseEntity<>("Medlem hittades inte!", HttpStatus.NOT_FOUND);
-        }
+        Member member = memberRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Member", "id", id));
+        return new ResponseEntity<>(member, HttpStatus.OK);
     }
 
     @Override
@@ -62,22 +61,38 @@ public class MemberServiceImpl implements MemberService {
 
     @Override
     public ResponseEntity<String> deleteMember(Long id) {
-        if(memberRepository.existsById(id)){
-            memberRepository.deleteById(id);
-            return new ResponseEntity<>("Medlem raderades!", HttpStatus.OK);
-        }else{
-            return new ResponseEntity<>("Medlem hittades inte!", HttpStatus.NOT_FOUND);
+        Member member = memberRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Member", "id", id));
+
+        Address address = member.getAddress();
+
+        memberRepository.deleteById(id);
+
+        List<Member> othersWithSameAddress  = memberRepository.findAll().stream()
+                .filter(m-> m.getAddress().getAddressId() == address.getAddressId())
+                .collect(Collectors.toList());
+
+        if(othersWithSameAddress.isEmpty()) {
+            addressRepository.deleteById(address.getAddressId());
         }
+        return new ResponseEntity<>("Medlem raderad!", HttpStatus.OK);
     }
 
     @Override
     public ResponseEntity<?> updateMember(Member member) {
-        if(memberRepository.existsById(member.getId())){
-            Member updatedMember = memberRepository.save(member);
-            return new ResponseEntity<>(updatedMember, HttpStatus.OK);
-        }else{
-            return new ResponseEntity<>("Medlem hittades inte!", HttpStatus.NOT_FOUND);
-        }
+        Member existingMember = memberRepository.findById(member.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("Member", "id", member.getId()));
+
+        existingMember.setFirstName(member.getFirstName());
+        existingMember.setLastName(member.getLastName());
+        existingMember.setEmail(member.getEmail());
+        existingMember.setPhone(member.getPhone());
+        existingMember.setDateOfBirth(member.getDateOfBirth());
+        existingMember.setAddress(member.getAddress());
+
+        Member updatedMember = memberRepository.save(existingMember);
+        return new ResponseEntity<>(updatedMember, HttpStatus.OK);
+
 
     }
 }
